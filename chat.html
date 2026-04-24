@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Interview - AI Interview Prep</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .api-setup {
+      background-color: var(--card-bg);
+      border: 1px solid var(--primary);
+      border-radius: 8px;
+      padding: 28px;
+      max-width: 520px;
+      margin: 0 auto;
+    }
+    .api-setup input {
+      width: 100%;
+      padding: 10px 14px;
+      background-color: var(--bg-color);
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      color: var(--text-main);
+      font-family: var(--font);
+      font-size: 13px;
+      margin: 12px 0 16px;
+      outline: none;
+    }
+    .api-setup input:focus { border-color: var(--primary); }
+
+    .api-note {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 12px;
+      line-height: 1.7;
+      border-top: 1px solid var(--border-color);
+      padding-top: 12px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <header>
+    <div class="logo">[ AI Interview Prep ]</div>
+    <nav>
+      <a href="dashboard.html">Dashboard</a>
+      <a href="index.html">Home</a>
+    </nav>
+  </header>
+
+  <main>
+
+    <div id="setupScreen">
+
+      <section>
+        <h1>Start Interview Session</h1>
+        <p>Enter your free Google Gemini API key to begin your AI-powered interview.</p>
+      </section>
+
+      <div class="api-setup">
+        <h2>Enter Gemini API Key</h2>
+        <p style="font-size:13px; color:var(--text-muted);">
+          Your key stays in your browser only. It is never saved or shared.
+        </p>
+        <input
+          type="password"
+          id="apiKeyInput"
+          placeholder="AIzaSy..."
+        />
+        <button class="btn btn-primary" id="startBtn" style="width:100%;">
+          Start AI Interview
+        </button>
+        <p class="api-note">
+          How to get a FREE API key (no credit card needed):<br />
+          1. Go to aistudio.google.com<br />
+          2. Sign in with your Google account<br />
+          3. Click "Get API Key" then "Create API key"<br />
+          4. Copy and paste it above
+        </p>
+      </div>
+
+    </div>
+
+    <div id="interviewScreen" style="display: none;">
+
+      <section>
+        <h1>Interview Session</h1>
+        <p id="questionCounter">Question 1 of 10</p>
+        
+        <div class="progress-bar-wrap">
+          <div class="progress-bar-fill" id="progressBar" style="width: 10%;"></div>
+        </div>
+      </section>
+
+      <div class="chat-box" id="chatBox"></div>
+
+      <div id="inputArea">
+        <div class="chat-input-row">
+          <textarea
+            id="answerInput"
+            placeholder="Type your answer here..."
+            rows="3"
+          ></textarea>
+          <button class="btn btn-primary" id="submitBtn">Submit</button>
+        </div>
+      </div>
+
+      <div id="nextArea" style="display: none; margin-top: 12px;">
+        <button class="btn btn-secondary" id="nextBtn">Next Question</button>
+      </div>
+
+    </div>
+
+  </main>
+
+  <footer>
+    <p>AI Interview Chatbot | Student Project</p>
+  </footer>
+
+  <script src="script.js"></script>
+
+  <script>
+
+    var userName = localStorage.getItem("loggedInUser");
+    if (userName === null) {
+      window.location.href = "login.html";
+    }
+
+    var GEMINI_API_KEY  = "";     
+    var currentIndex    = 0;      
+    var totalScore      = 0;      
+    var answered        = false; 
+    var TOTAL_QUESTIONS = 5;
+
+    var questionBank = [];
+
+    var sessionHistory = [];
+
+    var setupScreen     = document.getElementById("setupScreen");
+    var interviewScreen = document.getElementById("interviewScreen");
+    var apiKeyInput     = document.getElementById("apiKeyInput");
+    var startBtn        = document.getElementById("startBtn");
+    var chatBox         = document.getElementById("chatBox");
+    var answerInput     = document.getElementById("answerInput");
+    var submitBtn       = document.getElementById("submitBtn");
+    var nextBtn         = document.getElementById("nextBtn");
+    var nextArea        = document.getElementById("nextArea");
+    var progressBar     = document.getElementById("progressBar");
+    var questionCounter = document.getElementById("questionCounter");
+
+    async function callGemini(prompt) {
+
+      var url =
+        "https://generativelanguage.googleapis.com/v1beta/models/" +
+        "gemini-2.5-flash:generateContent?key=" + GEMINI_API_KEY;
+
+      var response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                { text: prompt }  
+              ]
+            }
+          ]
+        })
+      });
+
+      var data = await response.json();
+
+      if (data.error) {
+        throw new Error(data.error.message);
+      }
+
+      if (!data.candidates || !data.candidates[0] || !data.candidates[0].content) {
+        throw new Error("Unexpected response: " + JSON.stringify(data));
+      }
+
+      return data.candidates[0].content.parts[0].text;
+    }
+
+    var addMessage = (text, type, label) => {
+
+      var div = document.createElement("div");
+      div.classList.add("chat-msg", type);
+
+      if (label) {
+        var labelDiv = document.createElement("div");
+        labelDiv.classList.add("label");
+        labelDiv.textContent = label;
+        div.appendChild(labelDiv);
+      }
+
+      div.appendChild(document.createTextNode(text));
+
+      chatBox.appendChild(div);
+
+      chatBox.scrollTop = chatBox.scrollHeight;
+    };
+
+    var showTyping = () => {
+      var div = document.createElement("div");
+      div.classList.add("chat-msg", "system");
+      div.id = "typingIndicator";
+      div.textContent = "AI is thinking...";
+      chatBox.appendChild(div);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    };
+
+    var hideTyping = () => {
+      var el = document.getElementById("typingIndicator");
+      if (el) {
+        el.remove();
+      }
+    };
+
+    function updateProgress() {
+      questionCounter.textContent =
+        "Question " + (currentIndex + 1) + " of " + TOTAL_QUESTIONS;
+
+      var percent = ((currentIndex + 1) / TOTAL_QUESTIONS) * 100;
+      progressBar.style.width = percent + "%";
+    }
+
+    async function generateQuestion() {
+
+      updateProgress();
+
+      answerInput.disabled   = true;
+      submitBtn.disabled     = true;
+      nextArea.style.display = "none";
+      answered               = false;
+
+      showTyping();
+
+      var askedSoFar = questionBank.length > 0
+        ? "Do not repeat these questions: " + questionBank.join(" | ")
+        : "";
+
+      var prompt =
+        "You are a professional interviewer conducting a mock interview for a " +
+        "2nd year BTech Computer Science student applying for a software internship. " +
+        "Generate exactly ONE interview question. " +
+        "The question should be from one of these topics: " +
+        "HTML/CSS basics, JavaScript fundamentals, DOM manipulation, " +
+        "problem solving logic, or HR and behavioural questions. " +
+        "Return ONLY the question text. No numbering, no explanation, no extra text. " +
+        "Question number " + (currentIndex + 1) + " of " + TOTAL_QUESTIONS + ". " +
+        askedSoFar;
+
+      try {
+        var question = await callGemini(prompt);
+        question = question.trim();
+
+        questionBank.push(question);
+
+        hideTyping();
+
+        addMessage(question, "system", "Interviewer");
+
+        answerInput.value    = "";
+        answerInput.disabled = false;
+        submitBtn.disabled   = false;
+        answerInput.focus();
+
+      } catch (error) {
+        hideTyping();
+        addMessage(
+          "Error: " + error.message + ". Check your API key and internet connection.",
+          "feedback"
+        );
+        console.error("Gemini API Error:", error);
+      }
+    }
+
+    async function handleSubmit() {
+
+      var userAnswer = answerInput.value.trim();
+
+      if (userAnswer === "") {
+        alert("Please type an answer before submitting.");
+        return;
+      }
+
+      if (answered) return;
+      answered = true;
+
+      answerInput.disabled = true;
+      submitBtn.disabled   = true;
+
+      addMessage(userAnswer, "user", "Your Answer");
+      showTyping();
+
+      var currentQuestion = questionBank[currentIndex];
+
+      var prompt =
+        "You are evaluating a mock interview answer from a 2nd year BTech student. " +
+        "Be fair, specific, and encouraging. " +
+        "Interview Question: " + currentQuestion + "\n" +
+        "Student's Answer: " + userAnswer + "\n\n" +
+        "Respond in EXACTLY this format and nothing else:\n" +
+        "Score: X/10\n" +
+        "Feedback: [Write 2 to 3 sentences of constructive feedback]";
+
+      try {
+        var result = await callGemini(prompt);
+        result = result.trim();
+
+        hideTyping();
+
+        addMessage(result, "feedback", "AI Feedback");
+
+        var scoreMatch = result.match(/Score:\s*(\d+)/i);
+        var score = scoreMatch ? parseInt(scoreMatch[1]) : 6;
+
+        totalScore = totalScore + score;
+
+        sessionHistory.push({
+          question: currentQuestion,
+          answer:   userAnswer,
+          score:    score
+        });
+
+        nextArea.style.display = "block";
+
+        if (currentIndex === TOTAL_QUESTIONS - 1) {
+          nextBtn.textContent = "Get Final Evaluation";
+        } else {
+          nextBtn.textContent = "Next Question";
+        }
+
+      } catch (error) {
+        hideTyping();
+        addMessage(
+          "Error: " + error.message + ". Please check your API key and internet connection.",
+          "feedback"
+        );
+        console.error("Gemini API Error:", error);
+        answered = false;
+        answerInput.disabled = false;
+        submitBtn.disabled   = false;
+      }
+    }
+
+    async function showFinalEvaluation() {
+
+      document.getElementById("inputArea").style.display = "none";
+      nextArea.style.display = "none";
+
+      progressBar.style.width = "100%";
+      questionCounter.textContent = "Session Complete";
+
+      showTyping();
+
+      var sessionSummary = sessionHistory.map(function(item, index) {
+        return (
+          "Q" + (index + 1) + ": " + item.question + "\n" +
+          "Answer: " + item.answer + "\n" +
+          "Score given: " + item.score + "/10"
+        );
+      }).join("\n\n");
+
+      var prompt =
+        "You are a senior interviewer writing a final performance review " +
+        "for a 2nd year BTech student after a mock interview. " +
+        "Be encouraging, honest, and specific. Keep it under 120 words. " +
+        "Here is the complete session for student named " + userName + ":\n\n" +
+        sessionSummary + "\n\n" +
+        "Total score: " + totalScore + " out of " + (TOTAL_QUESTIONS * 10) + ".\n\n" +
+        "Write a short review that mentions: " +
+        "their strongest answer, their weakest area, and one clear improvement tip.";
+
+      try {
+        var evaluation = await callGemini(prompt);
+        evaluation = evaluation.trim();
+
+        hideTyping();
+
+        var avgScore = Math.round(totalScore / TOTAL_QUESTIONS);
+
+        addMessage(
+          "Session Complete\n" +
+          "Total Score: " + totalScore + " / " + (TOTAL_QUESTIONS * 10) + "\n" +
+          "Average Score: " + avgScore + " / 10",
+          "final"
+        );
+
+        addMessage(evaluation, "feedback", "AI Performance Review");
+
+        localStorage.setItem("lastScore", avgScore);
+
+        var prev = localStorage.getItem("totalSessions");
+        if (prev === null) {
+          localStorage.setItem("totalSessions", "1");
+        } else {
+          localStorage.setItem("totalSessions", String(parseInt(prev) + 1));
+        }
+
+        var backBtn = document.createElement("button");
+        backBtn.textContent   = "Back to Dashboard";
+        backBtn.className     = "btn btn-primary";
+        backBtn.style.marginTop = "16px";
+
+        backBtn.addEventListener("click", function() {
+          window.location.href = "dashboard.html";
+        });
+
+        chatBox.appendChild(backBtn);
+        chatBox.scrollTop = chatBox.scrollHeight;
+
+      } catch (error) {
+        hideTyping();
+        addMessage("Error loading final evaluation.", "feedback");
+        console.error("Gemini API Error:", error);
+      }
+    }
+
+    startBtn.addEventListener("click", async function() {
+
+      var key = apiKeyInput.value.trim();
+
+      if (key === "" || !key.startsWith("AIza")) {
+        alert("Please enter a valid Gemini API key. It should start with 'AIza'.");
+        return;
+      }
+
+      GEMINI_API_KEY = key;
+
+      setupScreen.style.display     = "none";
+      interviewScreen.style.display = "block";
+
+      addMessage(
+        "Hello, " + userName + ". Welcome to your AI-powered mock interview. " +
+        "I will ask you " + TOTAL_QUESTIONS + " questions one by one. " +
+        "Type your answer and press Submit or Enter. Good luck.",
+        "system",
+        "AI Interviewer"
+      );
+
+      await generateQuestion();
+    });
+
+    submitBtn.addEventListener("click", function() {
+      handleSubmit();
+    });
+
+    answerInput.addEventListener("keydown", function(event) {
+      if (event.key === "Enter" && !event.shiftKey) {
+        event.preventDefault();
+        handleSubmit();
+      }
+    });
+
+    nextBtn.addEventListener("click", async function() {
+      currentIndex = currentIndex + 1;
+
+      if (currentIndex >= TOTAL_QUESTIONS) {
+        await showFinalEvaluation();
+      } else {
+        await generateQuestion();
+      }
+    });
+
+  </script>
+
+</body>
+</html>
