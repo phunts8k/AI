@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard - AI Interview Prep</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+
+  <header>
+    <div class="logo">[ AI Interview Prep ]</div>
+    <nav>
+      <a href="index.html">Home</a>
+      <button
+        id="logoutBtn"
+        class="btn btn-secondary"
+        style="font-size: 13px; padding: 4px 14px;"
+      >
+        Logout
+      </button>
+    </nav>
+  </header>
+
+  <main>
+
+    <section>
+      <h1 id="welcomeMsg">Welcome back</h1>
+      <p>Select an action below to continue your interview preparation.</p>
+    </section>
+
+    <section>
+      <div class="dashboard-grid">
+
+        <div class="dashboard-card">
+          <div class="stat" id="lastScore">--</div>
+          <p>Last Session Score</p>
+        </div>
+
+        <div class="dashboard-card">
+          <div class="stat" id="totalSessions">0</div>
+          <p>Sessions Completed</p>
+        </div>
+
+        <div class="dashboard-card">
+          <div class="stat">5</div>
+          <p>Questions Per Session</p>
+        </div>
+
+      </div>
+    </section>
+
+    <hr class="divider" />
+
+    <section>
+      <h2>Actions</h2>
+
+      <div class="card">
+        <h3>Start a New Interview Session</h3>
+        <p>
+          AI will generate 5 fresh questions just for you. Type your answer,
+          submit it, and receive real feedback from Gemini AI.
+        </p>
+        <a href="chat.html" class="btn btn-primary">Start Interview</a>
+      </div>
+
+      <div class="card">
+        <h3>View Progress</h3>
+        <p id="progressText">
+          Your last session score will appear here after you complete an interview.
+        </p>
+      </div>
+
+    </section>
+
+    <section>
+      <hr class="divider" />
+      <h2>About This App</h2>
+      <div class="card">
+        <p>
+          This application uses Google Gemini AI to generate unique interview questions
+          every session and to evaluate your answers in real time. No two sessions
+          are the same.
+        </p>
+        <p>
+          Your session data and scores are stored in the browser so you can track
+          your progress over time. No server or database is required.
+        </p>
+      </div>
+    </section>
+
+  </main>
+
+  <footer>
+    <p>AI Interview Chatbot | Student Project</p>
+  </footer>
+
+  <script src="script.js"></script>
+
+  <script>
+
+    var loggedInUser = localStorage.getItem("loggedInUser");
+
+    if (loggedInUser === null) {
+      window.location.href = "login.html";
+    }
+
+    document.getElementById("welcomeMsg").textContent = "Welcome, " + loggedInUser;
+
+    var lastScore = localStorage.getItem("lastScore");
+    var totalSessions = localStorage.getItem("totalSessions");
+
+    if (lastScore !== null) {
+      document.getElementById("lastScore").textContent = lastScore + "/10";
+    }
+
+    if (totalSessions !== null) {
+      document.getElementById("totalSessions").textContent = totalSessions;
+
+      document.getElementById("progressText").textContent =
+        "You have completed " + totalSessions + " session(s). " +
+        "Your last score was " + lastScore + " out of 10.";
+    }
+
+    document.getElementById("logoutBtn").addEventListener("click", function() {
+      localStorage.removeItem("loggedInUser");
+      window.location.href = "index.html";
+    });
+  </script>
+
+</body>
+</html>
