@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login - AI Interview Prep</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+
+  <header>
+    <div class="logo">[ AI Interview Prep ]</div>
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="login.html" class="active">Login</a>
+      <a href="signup.html">Sign Up</a>
+    </nav>
+  </header>
+
+  <main style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: calc(100vh - 60px); margin: 0 auto; padding: 24px 20px;">
+
+    <div style="width: 100%; max-width: 440px;">
+
+    <section style="margin-bottom: 20px;">
+      <h1>Login</h1>
+      <p>Enter your credentials to access your dashboard.</p>
+    </section>
+
+    <div class="card">
+
+      <div class="msg error" id="errorMsg">Invalid email or password.</div>
+      <div class="msg success" id="successMsg">Login successful. Redirecting...</div>
+
+      <form id="loginForm">
+
+        <div class="form-group">
+          <label for="email">Email Address</label>
+          <input
+            type="email"
+            id="email"
+            name="email"
+            placeholder="you@example.com"
+            required
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input
+            type="password"
+            id="password"
+            name="password"
+            placeholder="Enter your password"
+            required
+          />
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width: 100%;">
+          Login
+        </button>
+
+      </form>
+
+      <hr class="divider" />
+
+      <p class="text-center" style="font-size: 13px;">
+        Do not have an account?
+        <a href="signup.html" style="color: var(--primary);">Sign Up</a>
+      </p>
+
+    </div>
+    </div>
+  </main>
+
+  <footer>
+    <p>AI Interview Chatbot | Student Project</p>
+  </footer>
+
+  <script src="script.js"></script>
+
+  <script>
+
+    var loginForm = document.getElementById("loginForm");
+    var errorMsg  = document.getElementById("errorMsg");
+    var successMsg = document.getElementById("successMsg");
+
+    loginForm.addEventListener("submit", function(event) {
+
+      event.preventDefault();
+
+      var emailInput    = document.getElementById("email").value.trim();
+      var passwordInput = document.getElementById("password").value.trim();
+
+      errorMsg.style.display   = "none";
+      successMsg.style.display = "none";
+
+      if (emailInput === "" || passwordInput === "") {
+        errorMsg.textContent   = "Please fill in both fields.";
+        errorMsg.style.display = "block";
+        return;
+      }
+
+      var storedUser = localStorage.getItem("registeredUser");
+
+      if (storedUser === null) {
+        errorMsg.textContent   = "No account found. Please sign up first.";
+        errorMsg.style.display = "block";
+        return;
+      }
+
+      var user = JSON.parse(storedUser);
+
+      if (emailInput === user.email && passwordInput === user.password) {
+
+        localStorage.setItem("loggedInUser", user.name);
+
+        successMsg.style.display = "block";
+
+        setTimeout(function() {
+          window.location.href = "dashboard.html";
+        }, 1200);
+
+      } else {
+        errorMsg.textContent   = "Invalid email or password. Please try again.";
+        errorMsg.style.display = "block";
+      }
+    });
+  </script>
+
+</body>
+</html>
